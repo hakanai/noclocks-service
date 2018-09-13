@@ -1,0 +1,5 @@
+{
+  "name": "noclocks",
+  "description": "A clock image server.",
+  "image": "heroku/gradle"
+}
