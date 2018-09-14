@@ -31,15 +31,21 @@ public class Main {
 
                 chain.get("api/1/utc", context -> {
 
+                    String nowParameter = context.getRequest().getQueryParams().get("now");
+                    Instant now = nowParameter == null ? Instant.now() : Instant.parse(nowParameter);
+
                     // TODO: Code obviously breaks in 2037.
-                    long unixTime = Instant.now().getLong(ChronoField.INSTANT_SECONDS);
+                    long unixTime = now.getLong(ChronoField.INSTANT_SECONDS);
                     if (unixTime < 0 || unixTime > MAX_UNSIGNED_INT) {
                         throw new IllegalStateException("Application is now broken, unixTime = " + unixTime);
                     }
 
+                    // RGBA -> ARGB
+                    int pixel = (int) ((unixTime << 24) | ((unixTime >> 8) & 0xFFFFFF));
+
                     // TODO: Can we reuse the image?
                     BufferedImage image = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
-                    image.setRGB(0, 0, (int) unixTime);
+                    image.setRGB(0, 0, pixel);
 
                     ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer();
                     boolean success = false;
@@ -54,6 +60,8 @@ public class Main {
 
                         context.getResponse().contentType("image/png");
                         context.getResponse().noCompress();
+                        // TODO: Could possibly ETag it with the value we used.
+                        context.getResponse().getHeaders().add("Cache-Control", "no-cache");
                         context.getResponse().send(buffer);
 
                         success = true;
