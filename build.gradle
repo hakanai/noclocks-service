@@ -1,17 +1,20 @@
 plugins {
-  id "io.ratpack.ratpack-groovy" version "1.5.4"
+  id 'io.ratpack.ratpack-groovy' version '1.5.4'
 }
 
 repositories {
   jcenter()
 }
 
-mainClassName = "Main"
+mainClassName = 'Main'
 
 dependencies {
-  runtime "org.slf4j:slf4j-simple:1.7.25"
-  compile ratpack.dependency("hikari")
-  testCompile 'junit:junit:4.12'
+  implementation ratpack.dependency('hikari')
+  implementation 'com.ibm.icu:icu4j:62.1'
+
+  runtimeOnly 'org.slf4j:slf4j-simple:1.7.25'
+
+  testImplementation 'junit:junit:4.12'
 }
 
 task stage {
