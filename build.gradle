@@ -12,6 +12,9 @@ dependencies {
   implementation ratpack.dependency('hikari')
   implementation 'com.ibm.icu:icu4j:62.1'
 
+  // Workaround for https://github.com/ratpack/ratpack/issues/1221
+  runtimeOnly 'javax.activation:activation:1.1.1'
+
   runtimeOnly 'org.slf4j:slf4j-simple:1.7.25'
 
   testImplementation 'junit:junit:4.12'
