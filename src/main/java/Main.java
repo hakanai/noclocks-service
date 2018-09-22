@@ -14,6 +14,7 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoField;
 import java.time.zone.ZoneOffsetTransition;
 import java.time.zone.ZoneRules;
+import java.util.Optional;
 
 public class Main {
     private static final long MAX_UNSIGNED_INT = 0xFFFFFFFFL;
@@ -29,8 +30,7 @@ public class Main {
 
                 chain.get("api/1/utc", context -> {
 
-                    String nowParameter = context.getRequest().getQueryParams().get("now");
-                    Instant now = nowParameter == null ? Instant.now() : Instant.parse(nowParameter);
+                    Instant now = getNow(context);
 
                     // TODO: Can we reuse the image?
                     BufferedImage image = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
@@ -40,8 +40,9 @@ public class Main {
 
                 chain.get("api/1/local", context -> {
 
-                    String nowParameter = context.getRequest().getQueryParams().get("now");
-                    Instant now = nowParameter == null ? Instant.now() : Instant.parse(nowParameter);
+                    // TODO: Get IP from X-Forwarded-For -> time zone ?
+
+                    Instant now = getNow(context);
                     String zoneParameter = context.getRequest().getQueryParams().get("tz");
                     ZoneId zoneId = zoneParameter == null ? ZoneOffset.UTC : ZoneId.of(zoneParameter);
 
@@ -58,6 +59,26 @@ public class Main {
                 });
             });
         });
+    }
+
+    private static Instant getNow(Context context) {
+        return getNowFromQueryParam(context)
+                .or(() -> getNowFromRequestHeader(context))
+                .orElseGet(Instant::now);
+    }
+
+    private static Optional<Instant> getNowFromQueryParam(Context context) {
+        return Optional
+                .ofNullable(context.getRequest().getQueryParams().get("now"))
+                .map(Instant::parse);
+    }
+
+    private static Optional<Instant> getNowFromRequestHeader(Context context) {
+        // X-Request-Start is used by Heroku but possibly others.
+        return Optional
+                .ofNullable(context.getRequest().getHeaders().get("X-Request-Start"))
+                .map(Long::parseLong)
+                .map(Instant::ofEpochMilli);
     }
 
     private static long getUnixTime(Instant instant) {
@@ -89,7 +110,6 @@ public class Main {
 
             context.getResponse().contentType("image/png");
             context.getResponse().noCompress();
-            // TODO: Could possibly ETag it with the value we used.
             context.getResponse().getHeaders().add("Cache-Control", "no-cache");
             context.getResponse().send(buffer);
 

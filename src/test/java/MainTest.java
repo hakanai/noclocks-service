@@ -28,12 +28,12 @@ public class MainTest {
 
     @Test
     public void testUtc() throws Exception {
-        ReceivedResponse response = appUnderTest.getHttpClient().get("/api/1/utc?now=2007-08-31T00:00:00Z");
+        var response = appUnderTest.getHttpClient().get("/api/1/utc?now=2007-08-31T00:00:00Z");
         assertThat(response.getHeaders().get("Content-Type"), is(equalTo("image/png")));
         assertThat(response.getHeaders().get("Cache-Control"), is(equalTo("no-cache")));
 
-        try (InputStream body = response.getBody().getInputStream()) {
-            BufferedImage image = ImageIO.read(body);
+        try (var body = response.getBody().getInputStream()) {
+            var image = ImageIO.read(body);
             assertThat(image.getWidth(), is(1));
             assertThat(image.getHeight(), is(1));
             assertThat(readPixelValue(image, 0, 0), is(1188518400L));
@@ -42,12 +42,12 @@ public class MainTest {
 
     @Test
     public void testLocal() throws Exception {
-        ReceivedResponse response = appUnderTest.getHttpClient().get("/api/1/local?now=2018-09-20T00:00:00Z&tz=Australia/Sydney");
+        var response = appUnderTest.getHttpClient().get("/api/1/local?now=2018-09-20T00:00:00Z&tz=Australia/Sydney");
         assertThat(response.getHeaders().get("Content-Type"), is(equalTo("image/png")));
         assertThat(response.getHeaders().get("Cache-Control"), is(equalTo("no-cache")));
 
-        try (InputStream body = response.getBody().getInputStream()) {
-            BufferedImage image = ImageIO.read(body);
+        try (var body = response.getBody().getInputStream()) {
+            var image = ImageIO.read(body);
             assertThat(image.getWidth(), is(4));
             assertThat(image.getHeight(), is(1));
             assertThat(readPixelValue(image, 0, 0), is(1537401600L));

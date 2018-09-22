@@ -20,3 +20,6 @@ dependencies {
 task stage {
   dependsOn installDist
 }
+
+sourceCompatibility = 10
+targetCompatibility = 10
