@@ -1,3 +1,4 @@
+import com.google.common.primitives.Ints;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufOutputStream;
@@ -70,6 +71,7 @@ public class Main {
         return Optional
                 .ofNullable(context.getRequest().getQueryParams().get("size"))
                 .map(Integer::parseInt)
+                .map(i -> Ints.constrainToRange(i, 1, 128))
                 .orElse(1);
     }
 
