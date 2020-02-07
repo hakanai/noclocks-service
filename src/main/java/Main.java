@@ -7,6 +7,7 @@ import ratpack.server.RatpackServer;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
+import java.awt.image.WritableRaster;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -14,7 +15,9 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoField;
 import java.time.zone.ZoneOffsetTransition;
 import java.time.zone.ZoneRules;
+import java.util.Arrays;
 import java.util.Optional;
+import java.util.stream.LongStream;
 
 public class Main {
     private static final long MAX_UNSIGNED_INT = 0xFFFFFFFFL;
@@ -29,13 +32,9 @@ public class Main {
             server.handlers(chain -> {
 
                 chain.get("api/1/utc", context -> {
-
                     Instant now = getNow(context);
-
-                    // TODO: Can we reuse the image?
-                    BufferedImage image = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
-                    setPixelValue(image, 0, 0, getUnixTime(now));
-                    sendImage(context, image);
+                    long[] values = { getUnixTime(now) };
+                    sendValuesAsImage(context, values);
                 });
 
                 chain.get("api/1/local", context -> {
@@ -46,16 +45,16 @@ public class Main {
                     String zoneParameter = context.getRequest().getQueryParams().get("tz");
                     ZoneId zoneId = zoneParameter == null ? ZoneOffset.UTC : ZoneId.of(zoneParameter);
 
-                    BufferedImage image = new BufferedImage(4, 1, BufferedImage.TYPE_INT_ARGB);
-                    setPixelValue(image, 0, 0, getUnixTime(now));
+                    long[] values = new long[4];
+                    values[0] = getUnixTime(now);
                     ZoneRules zoneRules = zoneId.getRules();
-                    setPixelValue(image, 1, 0, zoneRules.getOffset(now).getTotalSeconds());
+                    values[1] = zoneRules.getOffset(now).getTotalSeconds();
                     ZoneOffsetTransition transition = zoneRules.nextTransition(now);
                     if (transition != null) {
-                        setPixelValue(image, 2, 0, getUnixTime(transition.getInstant()));
-                        setPixelValue(image, 3, 0, transition.getOffsetAfter().getTotalSeconds());
+                        values[2] = getUnixTime(transition.getInstant());
+                        values[3] = transition.getOffsetAfter().getTotalSeconds();
                     }
-                    sendImage(context, image);
+                    sendValuesAsImage(context, values);
                 });
             });
         });
@@ -65,6 +64,13 @@ public class Main {
         return getNowFromQueryParam(context)
                 .or(() -> getNowFromRequestHeader(context))
                 .orElseGet(Instant::now);
+    }
+
+    private static int getSize(Context context) {
+        return Optional
+                .ofNullable(context.getRequest().getQueryParams().get("size"))
+                .map(Integer::parseInt)
+                .orElse(1);
     }
 
     private static Optional<Instant> getNowFromQueryParam(Context context) {
@@ -89,11 +95,31 @@ public class Main {
         return unixTime;
     }
 
-    private static void setPixelValue(BufferedImage image, int x, int y, long value) {
-        // RGBA -> ARGB
-        int pixel = (int) ((value << 24) | ((value >> 8) & 0xFFFFFF));
+    private static void sendValuesAsImage(Context context, long[] values) throws IOException {
+        int size = getSize(context);
+        int[] pixelValues = LongStream.of(values).mapToInt(Main::pixelValueFor).toArray();
+        int[] array = new int[size * size * values.length];
+        int stride = size * values.length;
+        for (int i = 0; i < values.length; i++) {
+            for (int y = 0; y < size; y++) {
+                Arrays.fill(array,
+                        y * stride + i * size,
+                        y * stride + (i + 1) * size,
+                        pixelValues[i]);
+            }
+        }
 
-        image.setRGB(x, y, pixel);
+        // TODO: Can we reuse the image?
+        BufferedImage image = new BufferedImage(stride, size, BufferedImage.TYPE_INT_ARGB);
+        WritableRaster raster = image.getRaster();
+        raster.setDataElements(0, 0, stride, size, array);
+
+        sendImage(context, image);
+    }
+
+    private static int pixelValueFor(long value) {
+        // RGBA (Unity-friendly) -> ARGB (Java-friendly)
+        return (int) ((value << 24) | ((value >> 8) & 0xFFFFFF));
     }
 
     private static void sendImage(Context context, BufferedImage image) throws IOException {

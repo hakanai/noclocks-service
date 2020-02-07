@@ -57,6 +57,57 @@ public class MainTest {
         }
     }
 
+    @Test
+    public void testUtcWithSize() throws Exception {
+        var response = appUnderTest.getHttpClient().get("/api/1/utc?now=2007-08-31T00:00:00Z&size=4");
+        assertThat(response.getHeaders().get("Content-Type"), is(equalTo("image/png")));
+        assertThat(response.getHeaders().get("Cache-Control"), is(equalTo("no-cache")));
+
+        try (var body = response.getBody().getInputStream()) {
+            var image = ImageIO.read(body);
+            assertThat(image.getWidth(), is(4));
+            assertThat(image.getHeight(), is(4));
+            for (int x = 0; x < 4; x++) {
+                for (int y = 0; y < 4; y++) {
+                    assertThat(readPixelValue(image, x, y), is(1188518400L));
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testLocalWithSize() throws Exception {
+        var response = appUnderTest.getHttpClient().get("/api/1/local?now=2018-09-20T00:00:00Z&tz=Australia/Sydney&size=4");
+        assertThat(response.getHeaders().get("Content-Type"), is(equalTo("image/png")));
+        assertThat(response.getHeaders().get("Cache-Control"), is(equalTo("no-cache")));
+
+        try (var body = response.getBody().getInputStream()) {
+            var image = ImageIO.read(body);
+            assertThat(image.getWidth(), is(16));
+            assertThat(image.getHeight(), is(4));
+            for (int x = 0; x < 4; x++) {
+                for (int y = 0; y < 4; y++) {
+                    assertThat(readPixelValue(image, x, y), is(1537401600L));
+                }
+            }
+            for (int x = 4; x < 8; x++) {
+                for (int y = 0; y < 4; y++) {
+                    assertThat(readPixelValue(image, x, y), is(36000L));
+                }
+            }
+            for (int x = 8; x < 12; x++) {
+                for (int y = 0; y < 4; y++) {
+                    assertThat(readPixelValue(image, x, y), is(1538841600L));
+                }
+            }
+            for (int x = 12; x < 16; x++) {
+                for (int y = 0; y < 4; y++) {
+                    assertThat(readPixelValue(image, x, y), is(39600L));
+                }
+            }
+        }
+    }
+
     private long readPixelValue(BufferedImage image, int x, int y) {
         int pixel = image.getRGB(x, y);
 
